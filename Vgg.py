@@ -13,7 +13,7 @@ from data.data_utils import MyImageFolder
 import tensorflow as tf
 import os
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-batchsize = 10
+batchsize = 2
 num_epoch = 5000
 lr = 0.001
 log = Logger('./process')
@@ -21,12 +21,12 @@ train_data_path = './data/traindataset/'
 test_data_path = './data/testdataset/'
 normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                  std=[0.229, 0.224, 0.225])
-train_dataset = datasets.ImageFolder(train_data_path, Compose([Resize(224),
+train_dataset = datasets.ImageFolder(train_data_path, Compose([Resize((224, 224)),
                                                                ToTensor(),
                                                                normalize,
-                                                               ]))
+                                                              ]))
 train_loader = torch.utils.data.DataLoader(train_dataset, batchsize, shuffle=True )
-test_dataset = datasets.ImageFolder(test_data_path, Compose([Resize(224),
+test_dataset = datasets.ImageFolder(test_data_path, Compose([Resize((224, 224)),
                                                              ToTensor(),
                                                              normalize,
                                                                ]))
@@ -47,7 +47,7 @@ optimizer = torch.optim.SGD(itertools.chain(Vgg.features[24].parameters(),
                                              Vgg.classifier[6].parameters()), lr = lr, momentum = 0.9)
 Vgg = nn.DataParallel(Vgg.to(device), device_ids=[0, 1, 2, 3])
 loss = torch.nn.MSELoss()
-for epoch in range(2):
+for epoch in range(5):
     loss_list = []
     for batch, (x, y) in enumerate(train_loader):
         optimizer.zero_grad()
@@ -59,9 +59,9 @@ for epoch in range(2):
         loss_data.backward()
         optimizer.step()
         loss_list.append(loss_data.item())
-    print("Epoch is:" + str(epoch) +" loss is " + str(sum(loss_list)/len(loss_list)))
+    print("Epoch is:" + str(epoch + 1) +" loss is " + str(sum(loss_list)/len(loss_list)))
     if epoch%50 == 0:
-        log.scalar_summary('loss', loss_data.item(), epoch)
+        log.scalar_summary('loss', loss_data.item(), epoch+1)
 accr_list = []
 with torch.no_grad():
     for batch, (x, y) in enumerate(test_loader):
@@ -73,7 +73,7 @@ with torch.no_grad():
         accur = (result.ravel() == y.data.cpu().numpy())
         accr_list.append(sum(accur)/len(accur))
     print('The accuracy is ' + str(sum(accr_list)/len(accr_list)))
-        
+torch.save(Vgg.state_dict(), './Vgg_finetune_B')
 
 
 
