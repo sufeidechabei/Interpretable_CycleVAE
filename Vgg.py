@@ -73,7 +73,7 @@ with torch.no_grad():
         accur = (result.ravel() == y.data.cpu().numpy())
         accr_list.append(sum(accur)/len(accur))
     print('The accuracy is ' + str(sum(accr_list)/len(accr_list)))
-torch.save(Vgg.state_dict(), './Vgg_finetune_B')
+
 
 
 

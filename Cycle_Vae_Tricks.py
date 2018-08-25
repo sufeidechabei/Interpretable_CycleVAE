@@ -15,7 +15,7 @@ kl_cycle_w = 1
 recon_w = 1
 recon_cycle_w = 1
 device = torch.device('cuda:3' if torch.cuda.is_available() else 'cpu')
-logger = Logger('./cycletrick')
+logger = Logger('./cycletrick1')
 
 
 def compute_kl(self, mu):

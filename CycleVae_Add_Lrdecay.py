@@ -14,8 +14,8 @@ kl_w = 1
 kl_cycle_w = 1
 recon_w = 1
 recon_cycle_w = 1
-device = torch.device('cuda:3' if torch.cuda.is_available() else 'cpu')
-logger = Logger('./cycledecay')
+device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+logger = Logger('./cycledecay1')
 
 
 
@@ -121,6 +121,7 @@ for epoch in range(num_epoch):
     B_cycle_loss_list = []
     A_Rec_loss_list = []
     B_Rec_loss_list = []
+    adjust_lr(optimizer, epoch + 1, 0.001)
     for batch, input in enumerate(train_loader):
         optimizer.zero_grad()
         input[0] = input[0].to(device).squeeze(dim = 1)

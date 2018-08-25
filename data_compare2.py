@@ -14,8 +14,8 @@ kl_w = 1
 kl_cycle_w = 1
 recon_w = 1
 recon_cycle_w = 1
-device = torch.device('cuda:3' if torch.cuda.is_available() else 'cpu')
-logger = Logger('./msevaecycle'
+device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
+logger = Logger('./visualdata'
                 )
 
 def compute_kl(mu):
@@ -41,7 +41,8 @@ class Decoder(nn.Module):
     def __init__(self):
         super(Decoder, self).__init__()
         self.model = nn.Sequential(
-            nn.ConvTranspose2d(4096, 1024, kernel_size=4),
+            nn.BatchNorm2d(1024),
+            nn.ConvTranspose2d(1024, 1024, kernel_size=4),
             ReLU(),
             nn.BatchNorm2d(1024),
             nn.ConvTranspose2d(1024, 512, kernel_size=3, stride=2, padding=1),
@@ -58,21 +59,11 @@ class Cycle_VAE(nn.Module):
         self.decoder_A = Decoder()
         self.decoder_B = Decoder()
         self.share_encoder = nn.Conv2d(4096, 1024, kernel_size=1, stride=1, padding=0)
-        self.share_decoder = nn.ConvTranspose2d(1024, 4096, kernel_size=1, stride=1)
-        self.share_activation = ReLU()
-        self.batchnorm_A = nn.BatchNorm2d(4096)
-        self.batchnorm_B = nn.BatchNorm2d(4096)
     def forward(self, input):
         out_A = self.encoder_A(input[0])
         out_B = self.encoder_B(input[1])
         out_A = self.share_encoder(out_A)
         out_B = self.share_encoder(out_B)
-        out_A = self.share_decoder(out_A)
-        out_B = self.share_decoder(out_B)
-        out_A = self.share_activation(out_A)
-        out_B = self.share_activation(out_B)
-        out_A = self.batchnorm_A(out_A)
-        out_B = self.batchnorm_B(out_B)
         A_rec = self.decoder_A(out_A)
         B_rec = self.decoder_B(out_B)
         A_B = self.decoder_B(out_A)
@@ -81,12 +72,6 @@ class Cycle_VAE(nn.Module):
         B_A = self.encoder_A(B_A)
         A_B = self.share_encoder(A_B)
         B_A = self.share_encoder(B_A)
-        A_B = self.share_decoder(A_B)
-        B_A = self.share_decoder(B_A)
-        A_B = self.share_activation(A_B)
-        B_A = self.share_activation(B_A)
-        A_B = self.batchnorm_B(A_B)
-        B_A = self.batchnorm_A(B_A)
         A_B_A = self.decoder_A(A_B)
         B_A_B = self.decoder_B(B_A)
 
@@ -173,6 +158,4 @@ for epoch in range(num_epoch):
             logger.scalar_summary('Valid_Cycle_B_Loss', B_cycle_loss_valid_result, epoch + 1)
             logger.scalar_summary('Valid_A_Rec_Loss', A_rec_loss_valid_result, epoch + 1)
             logger.scalar_summary('Valid_B_Rec_Loss', B_rec_loss_valid_result, epoch + 1)
-
-
 

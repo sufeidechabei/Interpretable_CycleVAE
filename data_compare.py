@@ -1,4 +1,3 @@
-### Change the optimizer to SGD
 import torch
 from torch import nn
 from torch.nn import ReLU
@@ -14,14 +13,19 @@ kl_w = 1
 kl_cycle_w = 1
 recon_w = 1
 recon_cycle_w = 1
-device = torch.device('cuda:3' if torch.cuda.is_available() else 'cpu')
-logger = Logger('./msevaecycle'
+device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+logger = Logger('./visualdata'
                 )
 
 def compute_kl(mu):
     mu_2 = torch.pow(mu, 2)
     encoding_loss = torch.mean(mu_2)
     return encoding_loss
+def lam_rate(epoch):
+    if epoch>=10:
+       return 3
+    else:
+       return 0.03*epoch
 
 class Encoder(nn.Module):
     def __init__(self):
@@ -39,16 +43,30 @@ class Encoder(nn.Module):
 
 class Decoder(nn.Module):
     def __init__(self):
+        self.lam = None
         super(Decoder, self).__init__()
-        self.model = nn.Sequential(
+        self.submodel_first = nn.Sequential(
             nn.ConvTranspose2d(4096, 1024, kernel_size=4),
             ReLU(),
             nn.BatchNorm2d(1024),
             nn.ConvTranspose2d(1024, 512, kernel_size=3, stride=2, padding=1),
 
         )
+        self.activation = ReLU()
+        self.submodel_second = nn.Sequential(
+            nn.Conv2d(512, 512, kernel_size = 3, stride=2, padding=4),
+            ReLU(),
+            nn.BatchNorm2d(512),
+            nn.Conv2d(512, 512, kernel_size = 3, stride=2, padding=4),
+        )
+
+
     def forward(self, input):
-        out = self.model(input)
+        z = self.submodel_first(input)
+        z = self.activation(z)
+        z_result = self.submodel_second(z)
+
+        out = self.submodel_second(z_result)
         return out
 class Cycle_VAE(nn.Module):
     def __init__(self):
@@ -109,6 +127,8 @@ model = Cycle_VAE()
 optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 model = model.to(device)
 for epoch in range(num_epoch):
+    model.decoder_A.lam = lam_rate(epoch)
+    model.decoder_B.lam = lam_rate(epoch)
     train_loss_list = []
     A_cycle_loss_list = []
     B_cycle_loss_list = []
@@ -173,6 +193,3 @@ for epoch in range(num_epoch):
             logger.scalar_summary('Valid_Cycle_B_Loss', B_cycle_loss_valid_result, epoch + 1)
             logger.scalar_summary('Valid_A_Rec_Loss', A_rec_loss_valid_result, epoch + 1)
             logger.scalar_summary('Valid_B_Rec_Loss', B_rec_loss_valid_result, epoch + 1)
-
-
-
